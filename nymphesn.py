@@ -157,8 +157,8 @@ class NymphESN():
         #     print(vtarget[i])
         #     print(self.vall[:,i])
         vtarget.shape == (self.TAll, self.L)
-        vtest = self.vall[:,-self.TTest:]
-        testtarget = vtarget[-self.TTest:]
+        vtest = self.vall[:,self.TWashout+self.TTrain:]
+        testtarget = vtarget[self.TWashout+self.TTrain:-1]
         test_error = error_func(vtest, testtarget)
         
         vtrain = self.vall[:,self.TWashout:self.TWashout+self.TTrain]
