@@ -3,10 +3,11 @@ import numpy as np
 
 class ErrorFuncs:
     @staticmethod
-    def nmsre(v: np.array, vhat: np.array):
-        # print(v) #nan
-        # print(vhat) # nan brr
+    def nrmse(v: np.array, vhat: np.array):
         N = v.size
+        # print(N)
+        if v.size != vhat.size:
+            raise ValueError(f"{v.size =}, {vhat.size=}")
         sq = np.power((vhat-v), 2)
         sumsq = sum(sq.flatten())
         vhatmean = sum(vhat) / N
