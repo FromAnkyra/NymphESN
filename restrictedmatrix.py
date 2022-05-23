@@ -1,16 +1,19 @@
 import numpy as np
 import scipy.sparse as sparse
 
-within_connectivity = 0.7
-outwith_connectivity = 0.35
+within_connectivity = 0.2
+outwith_connectivity = 0.05
 
 total_size = 6
 inner_size = 3
 n_sub_reservoirs = 2
+np.random.seed(1)
 
 def create_random_esn_weights(total_size):
-    W = sparse.random(total_size, total_size, density=outwith_connectivity)
+    W = sparse.random(total_size, total_size, density=within_connectivity)
     W = W.toarray()
+    s = np.linalg.svd(W, compute_uv=False)
+    W = W / s[0]
     return W
 
 def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs):
@@ -28,6 +31,8 @@ def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs):
         coords = np.meshgrid(indices, indices)
         # print(coords)
         W[tuple(coords)] = W_inner
+    s = np.linalg.svd(W, compute_uv=False)
+    W = W / s[0]
     return W
 
 def zero_Wn(W, Wn_size, n_index):
