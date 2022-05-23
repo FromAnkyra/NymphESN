@@ -28,7 +28,7 @@ class NymphESN():
         self.N = N
         self.L = L
 
-        self.f = np.vectorize(f)
+        self.f = f
         self.rho = rho
         self.density = density 
 
@@ -71,8 +71,11 @@ class NymphESN():
             W.shape = (self.N, self.N)
             self.W = W
         elif W is None:
-            self.W = sparse.random(self.N, self.N, density=self.density)
-            self.W.data = (self.W.data - 0.5) * 2
+            W = sparse.random(self.N, self.N, density=self.density)
+            W.data = (W.data - 0.5) * 2
+            W = W.toarray()
+            s = np.linalg.svd(W, compute_uv=False)
+            self.W = W / s[0]
 
             # svd = np.linalg.svd(self.W, compute_uv=False)
             # self.W = self.W/svd[0]
@@ -102,10 +105,10 @@ class NymphESN():
         # print(f"x(t): {x_t.shape}")
         # print(f"Wu.u(t+1): {Wu_x_u.shape}")
         # print(f"rho: {self.rho}")
-        x_t1 = self.f(self.rho * self.W.dot(x_t) + Wu_x_u)
+        x_t1 = self.f(self.rho * x_t.T.dot(self.W) + Wu_x_u.T)
         # print(x_t1)
         # print(f"xall: {self.xall.shape}, x_t1: {x_t1.shape}")
-        self.xall = np.hstack((self.xall, x_t1))
+        self.xall = np.hstack((self.xall, x_t1.T))
         # print(f"xall: {self.xall.shape}")
         return
 
@@ -132,7 +135,7 @@ class NymphESN():
         M.shape = (self.N, self.TTrain)
         M = np.transpose(M)
         M_plus = np.linalg.pinv(M) 
-        self.Wv = np.transpose(np.dot(M_plus, vtarget))
+        self.Wv = M_plus.dot(vtarget).T
         # print(f"Wv shape: {self.Wv.shape}")
         return
 
@@ -148,13 +151,13 @@ class NymphESN():
         return
         # print(f"vall: {self.vall.shape}")
 
-    def get_error(self, vtarget: np.array, error_func = ErrorFuncs.nmsre):
+    def get_error(self, vtarget: np.array, error_func = ErrorFuncs.nrmse):
         
         # for i in range(self.TTrain + self.TTest):
         #     print(vtarget[i])
         #     print(self.vall[:,i])
-        vtarget.shape == (self.TTrain + self.TTest, self.L)
-        vtest = self.vall[:,self.TTrain:self.TTrain+self.TTest]
+        vtarget.shape == (self.TAll, self.L)
+        vtest = self.vall[:,-self.TTest:]
         testtarget = vtarget[-self.TTest:]
         test_error = error_func(vtest, testtarget)
         
