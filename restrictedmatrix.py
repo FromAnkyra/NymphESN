@@ -9,23 +9,23 @@ inner_size = 3
 n_sub_reservoirs = 2
 np.random.seed(1)
 
-def create_random_esn_weights(total_size):
-    W = sparse.random(total_size, total_size, density=within_connectivity)
+def create_random_esn_weights(total_size, density=within_connectivity):
+    W = sparse.random(total_size, total_size, density)
     W = W.toarray()
     s = np.linalg.svd(W, compute_uv=False)
     W = W / s[0]
     return W
 
-def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs):
+def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs, within_connectivity=within_connectivity, outwith_connectivity=outwith_connectivity):
 
     if total_size != inner_size*n_sub_reservoirs:
         raise ValueError("total size must be the number of reservoirs*their size")
 
-    W = sparse.random(total_size, total_size, density=outwith_connectivity)
+    W = sparse.random(total_size, total_size, outwith_connectivity)
     W = W.toarray()
 
     for i in range(n_sub_reservoirs):
-        W_inner = sparse.random(inner_size, inner_size, density=within_connectivity).toarray()
+        W_inner = sparse.random(inner_size, inner_size, within_connectivity).toarray()
         indices = np.array(range(inner_size))+(i*inner_size)
         # print(indices)
         coords = np.meshgrid(indices, indices)
