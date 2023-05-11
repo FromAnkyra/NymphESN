@@ -2,7 +2,10 @@ import numpy as np
 import scipy.sparse as sparse
 from . errorfuncs import ErrorFuncs
 import sys
+from sklearn.linear_model import Ridge
 np.set_printoptions(threshold=sys.maxsize)
+
+debug = False
 
 class NymphESN():
     """
@@ -12,7 +15,7 @@ class NymphESN():
     Initialising, training, and testing the ESN are all supported.
     currently training is only done using the pseudoinverse method.
     """
-    def __init__(self, K: int, N: int, L: int, seed: int, f=np.tanh, rho=2, density=0.1):
+    def __init__(self, K: int, N: int, L: int, seed: int, f=np.tanh, rho=2, density=0.1, svd_dv=1, leakage_rate=1):
         """
         Initialise the ESN with random input and inner weights.
 
@@ -31,6 +34,9 @@ class NymphESN():
         self.f = f
         self.rho = rho
         self.density = density 
+
+        self.svd_dv = svd_dv
+        self.alpha = leakage_rate
 
         # self.u = np.random.rand(K, 1) # input vector
         # self.x = np.zeros(N, 1) # state vector
@@ -75,7 +81,7 @@ class NymphESN():
             W.data = (W.data - 0.5) * 2
             W = W.toarray()
             s = np.linalg.svd(W, compute_uv=False)
-            self.W = W / s[0]
+            self.W = W / (s[0]/self.svd_dv)
 
             # svd = np.linalg.svd(self.W, compute_uv=False)
             # self.W = self.W/svd[0]
@@ -88,9 +94,8 @@ class NymphESN():
         self.TAll = TWashout + TTrain + TTest
     
     def set_input_stream(self, uall):
-        uall.shape = (self.K, -1) # infers TAll from the length of uall
-        self.uall = uall
-        return
+        self.uall = np.array(uall)
+        self.uall.shape = (self.K, -1) # infers TAll from the length of uall        return
     
     def run_timestep(self, t: int): # this is currently in the "flat" configuration, but would be easy to modify
         # print(t)
@@ -106,9 +111,12 @@ class NymphESN():
         # print(f"Wu.u(t+1): {Wu_x_u.shape}")
         # print(f"rho: {self.rho}")
         x_t1 = self.f(self.rho * x_t.T.dot(self.W) + Wu_x_u.T)
+        x_t1_leakage = (1 - self.alpha)*x_t.T + self.alpha*x_t1
         # print(x_t1)
+        # print(f"xall: {self.xall.shape}, x_t1_leakage: {x_t1_leakage.shape}")
         # print(f"xall: {self.xall.shape}, x_t1: {x_t1.shape}")
-        self.xall = np.hstack((self.xall, x_t1.T))
+        self.xall = np.hstack((self.xall, x_t1_leakage.T))
+        # self.xall = np.hstack((self.xall, x_t1.T))
         # print(f"xall: {self.xall.shape}")
         return
 
@@ -129,14 +137,34 @@ class NymphESN():
             # print(f"t: {t}")
         return
     
-    def train_reservoir(self, vtarget: np.array): #TODO: ????
+    def train_reservoir(self, vtarget: np.array): 
         vtarget.shape = (self.TTrain, self.L)
         M = self.xall[:, self.TWashout:self.TWashout+self.TTrain] #shape(N, T-1)
         M.shape = (self.N, self.TTrain)
         M = np.transpose(M)
         M_plus = np.linalg.pinv(M) 
         self.Wv = M_plus.dot(vtarget).T
-        # print(f"Wv shape: {self.Wv.shape}")
+        if debug:
+            print(f"Wv shape: {self.Wv.shape}")
+            print(f"{self.Wv=}")
+        return
+
+    def train_ridge_regression(self, vtarget: np.array):
+        reg = 1e-9  # regularization coefficient
+        vtarget.shape = (self.TTrain, self.L)
+        # direct equations from texts:
+        #X_T = X.T
+        #Wout = np.dot( np.dot(Yt,X_T), linalg.inv( np.dot(X,X_T) + \
+        #    reg*np.eye(1+inSize+resSize) ) )
+        # using scipy.linalg.solve:
+        M = self.xall[:, self.TWashout:self.TWashout+self.TTrain] #shape(N, T-1)
+        M.shape = (self.N, self.TTrain)
+        self.Wv = np.linalg.solve( np.dot(M,M.T) + reg*np.eye(self.N), 
+        np.dot(M,vtarget) ).T
+        # self.Wv = np.array(model.coef_)
+        # print(f"{self.Wv.shape=}")
+        # print(self.Wv)
+        self.Wv.shape = (self.L, self.N)
         return
 
     def get_output(self):
@@ -147,7 +175,7 @@ class NymphESN():
         # for v in range(self.TAll):
         #     if self.vall[:, v] > 2 or self.vall[:, v] < -2:
         #         print(f"t={v}, v={self.vall[:, v]}")
-        # print(self.vall.size)
+        # print(self.vall.shape)
         return
         # print(f"vall: {self.vall.shape}")
 
@@ -158,13 +186,14 @@ class NymphESN():
         #     print(self.vall[:,i])
         vtarget.shape == (self.TAll, self.L)
         vtest = self.vall[:,self.TWashout+self.TTrain:]
-        testtarget = vtarget[self.TWashout+self.TTrain:-1]
+        testtarget = vtarget[self.TWashout+self.TTrain:]
+        # print(f"{vtest=}, {testtarget=}")
         test_error = error_func(vtest, testtarget)
         
         vtrain = self.vall[:,self.TWashout:self.TWashout+self.TTrain]
         traintarget = vtarget[self.TWashout:self.TWashout+self.TTrain]
         train_error = error_func(vtrain, traintarget)
-
+        
         return train_error, test_error
     
     # def reset():

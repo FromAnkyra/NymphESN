@@ -11,28 +11,32 @@ np.random.seed(1)
 
 def create_random_esn_weights(total_size, density=within_connectivity):
     W = sparse.random(total_size, total_size, density)
+    W.data = (W.data - 0.5) * 2
     W = W.toarray()
     s = np.linalg.svd(W, compute_uv=False)
     W = W / s[0]
     return W
 
-def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs, within_connectivity=within_connectivity, outwith_connectivity=outwith_connectivity):
+def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs, within_connectivity=within_connectivity, outwith_connectivity=outwith_connectivity, svd_dv=1):
 
     if total_size != inner_size*n_sub_reservoirs:
         raise ValueError("total size must be the number of reservoirs*their size")
 
     W = sparse.random(total_size, total_size, outwith_connectivity)
+    W.data = (W.data - 0.5) * 2
     W = W.toarray()
 
     for i in range(n_sub_reservoirs):
-        W_inner = sparse.random(inner_size, inner_size, within_connectivity).toarray()
+        W_inner = sparse.random(inner_size, inner_size, within_connectivity)
+        W_inner.data = (W_inner.data - 0.5) * 2
+        W_inner = W_inner.toarray()
         indices = np.array(range(inner_size))+(i*inner_size)
         # print(indices)
         coords = np.meshgrid(indices, indices)
         # print(coords)
         W[tuple(coords)] = W_inner
     s = np.linalg.svd(W, compute_uv=False)
-    W = W / s[0]
+    W = W / (s[0]/svd_dv)
     return W
 
 def zero_Wn(W, Wn_size, n_index):

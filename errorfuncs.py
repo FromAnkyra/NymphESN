@@ -5,11 +5,16 @@ class ErrorFuncs:
     @staticmethod
     def nrmse(v: np.array, vhat: np.array):
         N = v.size
+        if N==0:
+            return 
         # print(N)
         if v.size != vhat.size:
             raise ValueError(f"{v.size =}, {vhat.size=}")
         sq = np.power((vhat-v), 2)
-        sumsq = sum(sq.flatten())
+        # print(sq.size)
+        sqflat = sq.flatten()
+        # print(sqflat.shape)
+        sumsq = np.sum(sqflat)
         vhatmean = sum(vhat) / N
         vhatminusvhatmeansq = sum((vhat - np.asarray([vhatmean] * N))**2)
         # print(f"sq: {sq}\nsumsq: {sumsq}\nvhatmean: {vhatmean}\nvhatminusmeansq: {vhatminusvhatmeansq}")
