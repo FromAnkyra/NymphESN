@@ -4,6 +4,11 @@ import numpy as np
 class ErrorFuncs:
     @staticmethod
     def nrmse(v: np.array, vhat: np.array):
+        '''
+        takes the Normalised Root Mean Square Error of two output arrays normalised over the standard deviation of the expected output
+        v: real output 
+        vhat: desired output
+        '''
         N = v.size
         if N==0:
             return 
@@ -25,6 +30,11 @@ class ErrorFuncs:
 
     @staticmethod
     def nmse(v, vhat):
+        '''
+        takes the Normalised Mean Square Error of two output arrays normalised over the standard deviation of the expected output
+        v: real output
+        vhat: desired output
+        '''
         N = len(v)
         sq = (vhat - v)**2
         sumsq = sum(sq)
@@ -36,6 +46,11 @@ class ErrorFuncs:
 
     @staticmethod
     def mse(v, vhat):
+        '''
+        takes the Mean Square Error of two output arrays
+        v: real output
+        vhat: desired output
+        '''
         N = len(v)
         sq = (vhat - v)**2
         sumsq = sum(sq.flatten())
@@ -44,6 +59,11 @@ class ErrorFuncs:
 
     @staticmethod
     def rmse(v, vhat):
+        '''
+        takes the Root Mean Square Error of two output arrays
+        v: real output
+        vhat: desired output
+        '''
         N = len(v)
         sq = (vhat - v)**2
         sumsq = sum(sq.flatten())
