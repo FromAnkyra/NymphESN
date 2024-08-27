@@ -13,7 +13,7 @@ def create_random_esn_weights(total_size, density=within_connectivity):
     W = sparse.random(total_size, total_size, density)
     W.data = (W.data - 0.5) * 2
     W = W.toarray()
-    s = np.linalg.svd(W, compute_uv=False)
+    s = np.linalg.eigvals(W)
     W = W / s[0]
     return W
 
@@ -35,8 +35,8 @@ def create_restricted_esn_weights(total_size, inner_size, n_sub_reservoirs, with
         coords = np.meshgrid(indices, indices)
         # print(coords)
         W[tuple(coords)] = W_inner
-    s = np.linalg.svd(W, compute_uv=False)
-    W = W / (s[0]/svd_dv)
+    s = np.abs(np.max(np.linalg.eigvals(W)))
+    W = W / (s/svd_dv)
     return W
 
 def zero_Wn(W, Wn_size, n_index):

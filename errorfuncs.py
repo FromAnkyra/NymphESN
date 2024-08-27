@@ -1,6 +1,8 @@
 import math
 import numpy as np
 
+debug=False
+
 class ErrorFuncs:
     @staticmethod
     def nrmse(v: np.array, vhat: np.array):
@@ -10,22 +12,28 @@ class ErrorFuncs:
         vhat: desired output
         '''
         N = v.size
+
         if N==0:
             return 
-        # print(N)
+        if debug:
+            print(f"{N=}")
+            print(f"{type(v)=}")
         if v.size != vhat.size:
             raise ValueError(f"{v.size =}, {vhat.size=}")
         sq = np.power((vhat-v), 2)
-        # print(sq.size)
         sqflat = sq.flatten()
-        # print(sqflat.shape)
+        if debug:
+            print(f"{sq.size=}")
+            print(f"{sqflat.shape=}")
         sumsq = np.sum(sqflat)
         vhatmean = sum(vhat) / N
         vhatminusvhatmeansq = sum((vhat - np.asarray([vhatmean] * N))**2)
-        # print(f"sq: {sq}\nsumsq: {sumsq}\nvhatmean: {vhatmean}\nvhatminusmeansq: {vhatminusvhatmeansq}")
-        res = math.sqrt(sumsq / vhatminusvhatmeansq)
-        # print(res)
-        # print(res)
+        if debug:
+            print(f"{type(sq)=}\n{type(sumsq)=}\n{type(vhatmean)=}\n{type(vhatminusvhatmeansq)=}")
+        res = np.sqrt(sumsq / vhatminusvhatmeansq)
+        if debug:
+            print(res)
+            print(res)
         return res
 
     @staticmethod

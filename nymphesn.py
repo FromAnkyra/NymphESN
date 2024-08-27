@@ -67,7 +67,7 @@ class NymphESN():
             self.Wu = np.random.uniform(-1, 1, size=(self.N, self.K))
         return
 
-    def set_weights(self, W=None, density=0.1):
+    def set_weights(self, W=None):
         '''
         Set inner weights to W if given, and to random weights otherwise
 
@@ -80,8 +80,11 @@ class NymphESN():
             W = sparse.random(self.N, self.N, density=self.density)
             W.data = (W.data - 0.5) * 2
             W = W.toarray()
-            s = np.linalg.svd(W, compute_uv=False)
-            self.W = W / (s[0]/self.svd_dv)
+            # print(np.linalg.eigvals(W))
+            s = np.abs(np.max(np.linalg.eigvals(W)))
+            if self.svd_dv == None:
+                self.svd_dv = s
+            self.W = W / (s/self.svd_dv)
 
             # svd = np.linalg.svd(self.W, compute_uv=False)
             # self.W = self.W/svd[0]
@@ -103,14 +106,19 @@ class NymphESN():
         # print(self.W)
         u_t = self.uall[:, t]
         x_t = self.xall[:,t]
-        # print(x_t)
+        # if t==0:
+        #     print(x_t)
         x_t.shape = (self.N, 1)
         Wu_x_u = self.Wu.dot(u_t)
+        # if t==0:
+        #     print(f"{Wu_x_u=}")
         Wu_x_u.shape = (self.N, 1)
         # print(f"x(t): {x_t.shape}")
         # print(f"Wu.u(t+1): {Wu_x_u.shape}")
         # print(f"rho: {self.rho}")
         x_t1 = self.f(self.rho * x_t.T.dot(self.W) + Wu_x_u.T)
+        # if t==0:
+        #     print(f"{x_t1=}")
         x_t1_leakage = (1 - self.alpha)*x_t.T + self.alpha*x_t1
         # print(x_t1)
         # print(f"xall: {self.xall.shape}, x_t1_leakage: {x_t1_leakage.shape}")
@@ -137,9 +145,11 @@ class NymphESN():
             # print(f"t: {t}")
         return
     
-    def train_reservoir(self, vtarget: np.array): 
+    def train_reservoir(self, vtarget: np.array, output = None): 
         vtarget.shape = (self.TTrain, self.L)
         M = self.xall[:, self.TWashout:self.TWashout+self.TTrain] #shape(N, T-1)
+        if output is not None:
+            M = output
         M.shape = (self.N, self.TTrain)
         M = np.transpose(M)
         M_plus = np.linalg.pinv(M) 
@@ -149,15 +159,20 @@ class NymphESN():
             print(f"{self.Wv=}")
         return
 
-    def train_ridge_regression(self, vtarget: np.array):
-        reg = 1e-9  # regularization coefficient
+    def train_ridge_regression(self, vtarget: np.array, output = None):
+        reg = 1e-8  # regularization coefficient
+        # print(f"{vtarget.shape=}")
+        # print(f"{self.TTrain=}")
         vtarget.shape = (self.TTrain, self.L)
         # direct equations from texts:
         #X_T = X.T
         #Wout = np.dot( np.dot(Yt,X_T), linalg.inv( np.dot(X,X_T) + \
         #    reg*np.eye(1+inSize+resSize) ) )
         # using scipy.linalg.solve:
+        # print(f"{self.xall=}")
         M = self.xall[:, self.TWashout:self.TWashout+self.TTrain] #shape(N, T-1)
+        if output is not None:
+            M = output
         M.shape = (self.N, self.TTrain)
         self.Wv = np.linalg.solve( np.dot(M,M.T) + reg*np.eye(self.N), 
         np.dot(M,vtarget) ).T
